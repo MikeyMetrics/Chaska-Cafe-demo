@@ -2,105 +2,48 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chaska Kitchen - KOT Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Chaska Kitchen Dashboard</title>
+    <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-database-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;900&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Outfit', sans-serif; background-color: #0f172a; }
-        .kot-card { animation: slideIn 0.5s ease-out; }
-        @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    </style>
 </head>
-<body class="p-4 lg:p-8 text-white">
-
-    <div class="flex justify-between items-center mb-8 border-b border-slate-700 pb-4">
-        <div>
-            <h1 class="text-3xl font-black text-orange-500 italic">CHASKA KITCHEN</h1>
-            <p class="text-slate-400 text-xs font-bold uppercase tracking-[4px]">Live KOT Dashboard</p>
-        </div>
-        <div id="status" class="bg-green-500/10 text-green-500 px-4 py-2 rounded-full text-[10px] font-black border border-green-500/20">
-            ● ONLINE & LISTENING
-        </div>
+<body class="bg-slate-900 text-white p-8">
+    <div class="flex justify-between items-center mb-10 border-b border-slate-700 pb-5">
+        <h1 class="text-4xl font-black text-orange-500 italic">KITCHEN DASHBOARD</h1>
+        <div class="bg-green-500/10 text-green-400 px-4 py-2 rounded-full text-xs font-bold border border-green-500/20">LIVE</div>
     </div>
 
-    <div id="orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        </div>
-
-    <audio id="order-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+    <div id="orders-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+    <audio id="bell" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
     <script>
-        // 1. CONFIG (Wahi URL aur Key dalo jo index.html mein hai)
-        const SUPABASE_URL = 'https://YOUR_PROJECT_URL.supabase.co';
-        const SUPABASE_KEY = 'bnhgpbzyifpgwrnenvip';
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Wahi same Config yahan dalo
+        const firebaseConfig = { /* ... copied from above ... */ };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        // 2. FETCH INITIAL ORDERS
-        async function loadOrders() {
-            const { data, error } = await _supabase
-                .from('orders')
-                .select('*')
-                .eq('status', 'pending')
-                .order('created_at', { ascending: false });
-
-            if (data) {
-                const container = document.getElementById('orders-container');
-                container.innerHTML = '';
-                data.forEach(order => renderOrder(order));
+        db.ref('orders').on('value', (snapshot) => {
+            const grid = document.getElementById('orders-grid');
+            grid.innerHTML = '';
+            const data = snapshot.val();
+            if(data) {
+                Object.keys(data).forEach(id => {
+                    const order = data[id];
+                    if(order.status === 'pending') {
+                        grid.innerHTML += `<div class="bg-slate-800 p-6 rounded-3xl border-t-8 border-orange-500">
+                            <h2 class="text-3xl font-black mb-4">TABLE #${order.table_no}</h2>
+                            <p class="text-xl font-bold bg-slate-700 p-4 rounded-xl mb-6">${order.items}</p>
+                            <button onclick="markDone('${id}')" class="w-full bg-green-600 py-4 rounded-2xl font-black uppercase">Ready ✅</button>
+                        </div>`;
+                    }
+                });
+                document.getElementById('bell').play();
             }
+        });
+
+        function markDone(id) {
+            db.ref('orders/' + id).update({ status: 'completed' });
         }
-
-        // 3. RENDER ORDER CARD
-        function renderOrder(order) {
-            const container = document.getElementById('orders-container');
-            const time = new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            const card = `
-                <div id="order-${order.id}" class="kot-card bg-slate-800 border-l-8 border-orange-500 rounded-2xl p-6 shadow-2xl">
-                    <div class="flex justify-between items-start mb-4">
-                        <span class="bg-orange-600 text-white px-4 py-1 rounded-lg font-black text-xl italic tracking-tighter">
-                            TABLE #${order.table_no}
-                        </span>
-                        <span class="text-slate-400 text-xs font-bold">${time}</span>
-                    </div>
-                    
-                    <div class="space-y-2 mb-6">
-                        <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Items Ordered:</p>
-                        <p class="text-xl font-bold text-white leading-tight">${order.items}</p>
-                    </div>
-
-                    <div class="flex gap-2">
-                        <button onclick="completeOrder(${order.id})" class="flex-1 bg-green-600 hover:bg-green-500 py-3 rounded-xl font-black text-xs transition-all uppercase">
-                            Done ✅
-                        </button>
-                    </div>
-                </div>`;
-            container.insertAdjacentHTML('afterbegin', card);
-        }
-
-        // 4. REAL-TIME LISTENING (Sabse Main Feature)
-        _supabase
-            .channel('custom-all-channel')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
-                renderOrder(payload.new);
-                document.getElementById('order-sound').play(); // Bell bajegi!
-            })
-            .subscribe();
-
-        // 5. MARK COMPLETE (Database se hatane ya update ke liye)
-        async function completeOrder(id) {
-            const { error } = await _supabase
-                .from('orders')
-                .update({ status: 'completed' })
-                .eq('id', id);
-
-            if (!error) {
-                document.getElementById(`order-${id}`).remove();
-            }
-        }
-
-        loadOrders();
     </script>
 </body>
 </html>
