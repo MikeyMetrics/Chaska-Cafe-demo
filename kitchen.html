@@ -2,48 +2,206 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <title>Chaska Kitchen Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaska Cafe | Digital Menu</title>
     <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-database-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        .active-cat { background: #4f46e5 !important; color: white !important; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); }
+        .item-card { border: 1px solid #f1f5f9; background: white; border-radius: 28px; transition: 0.3s; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
 </head>
-<body class="bg-slate-900 text-white p-8">
-    <div class="flex justify-between items-center mb-10 border-b border-slate-700 pb-5">
-        <h1 class="text-4xl font-black text-orange-500 italic">KITCHEN DASHBOARD</h1>
-        <div class="bg-green-500/10 text-green-400 px-4 py-2 rounded-full text-xs font-bold border border-green-500/20">LIVE</div>
+<body class="pb-32">
+
+    <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b p-5 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-black italic text-indigo-600 tracking-tighter">CHASKA <span class="text-slate-800">CAFE</span></h1>
+            <p id="table-label" class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Table: Loading...</p>
+        </div>
+        <div class="flex gap-3">
+            <div class="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600"><i class="fa-solid fa-heart"></i></div>
+        </div>
+    </header>
+
+    <div class="p-4 flex gap-3 overflow-x-auto no-scrollbar bg-white sticky top-[73px] z-40 shadow-sm" id="cat-tabs">
+        <button onclick="filterMenu('All', this)" class="active-cat bg-slate-100 px-6 py-2.5 rounded-full text-xs font-black shrink-0 transition-all">All</button>
+        <button onclick="filterMenu('Burgers', this)" class="bg-slate-100 px-6 py-2.5 rounded-full text-xs font-black shrink-0 transition-all">Burgers</button>
+        <button onclick="filterMenu('Cold Coffee', this)" class="bg-slate-100 px-6 py-2.5 rounded-full text-xs font-black shrink-0 transition-all">Cold Coffee</button>
+        <button onclick="filterMenu('Pizza', this)" class="bg-slate-100 px-6 py-2.5 rounded-full text-xs font-black shrink-0 transition-all">Pizza</button>
+        <button onclick="filterMenu('Snacks', this)" class="bg-slate-100 px-6 py-2.5 rounded-full text-xs font-black shrink-0 transition-all">Snacks</button>
+        <button onclick="filterMenu('Shakes', this)" class="bg-slate-100 px-6 py-2.5 rounded-full text-xs font-black shrink-0 transition-all">Shakes</button>
     </div>
 
-    <div id="orders-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-    <audio id="bell" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+    <div id="menu-container" class="p-4 grid grid-cols-1 gap-5">
+        </div>
+
+    <div id="cart-bar" class="fixed bottom-6 left-4 right-4 z-50 hidden opacity-0 translate-y-10 transition-all duration-500">
+        <button onclick="openCart()" class="w-full bg-slate-900 text-white p-5 rounded-[2.5rem] flex justify-between items-center shadow-2xl">
+            <div class="flex items-center gap-4">
+                <span id="cart-count" class="bg-indigo-500 text-white w-7 h-7 rounded-full text-xs flex items-center justify-center font-black">0</span>
+                <span class="text-xs font-black uppercase tracking-widest">Review Order</span>
+            </div>
+            <span id="cart-total" class="font-black text-xl">₹0</span>
+        </button>
+    </div>
+
+    <div id="cart-modal" class="hidden fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-end">
+        <div class="bg-white w-full rounded-t-[3.5rem] p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-2xl font-black italic text-slate-800">Your <span class="text-indigo-600">Cart</span></h3>
+                <button onclick="closeCart()" class="bg-slate-100 w-10 h-10 rounded-full text-slate-400 text-2xl">&times;</button>
+            </div>
+            
+            <div id="cart-items" class="space-y-5 mb-8"></div>
+
+            <div class="mb-8">
+                <p class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Chef ke liye koi note?</p>
+                <textarea id="order-note" placeholder="E.g. Make it extra spicy, No onion..." class="w-full bg-slate-50 border border-slate-100 p-5 rounded-3xl text-sm font-bold outline-none focus:border-indigo-300 transition-all" rows="2"></textarea>
+            </div>
+
+            <div class="border-t pt-8">
+                <div class="flex justify-between font-black text-2xl mb-8 text-slate-800"><span>Grand Total</span><span id="final-bill">₹0</span></div>
+                <button onclick="placeOrder()" id="order-btn" class="w-full bg-indigo-600 text-white py-6 rounded-[2rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-200 active:scale-95 transition-all">Place Order 🚀</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // Wahi same Config yahan dalo
-        const firebaseConfig = { /* ... copied from above ... */ };
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlpRY4QJpcaZhR6PRshFBEaIt63zbammI",
+            authDomain: "chaska-pos-4fb1a.firebaseapp.com",
+            databaseURL: "https://chaska-pos-4fb1a-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "chaska-pos-4fb1a",
+            storageBucket: "chaska-pos-4fb1a.firebasestorage.app",
+            messagingSenderId: "878605199091",
+            appId: "1:878605199091:web:2fd2757f8edd8e804bb986"
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        db.ref('orders').on('value', (snapshot) => {
-            const grid = document.getElementById('orders-grid');
-            grid.innerHTML = '';
-            const data = snapshot.val();
-            if(data) {
-                Object.keys(data).forEach(id => {
-                    const order = data[id];
-                    if(order.status === 'pending') {
-                        grid.innerHTML += `<div class="bg-slate-800 p-6 rounded-3xl border-t-8 border-orange-500">
-                            <h2 class="text-3xl font-black mb-4">TABLE #${order.table_no}</h2>
-                            <p class="text-xl font-bold bg-slate-700 p-4 rounded-xl mb-6">${order.items}</p>
-                            <button onclick="markDone('${id}')" class="w-full bg-green-600 py-4 rounded-2xl font-black uppercase">Ready ✅</button>
-                        </div>`;
-                    }
-                });
-                document.getElementById('bell').play();
-            }
-        });
+        const params = new URLSearchParams(window.location.search);
+        const table = params.get('table') || "T-1";
+        document.getElementById('table-label').innerText = "TABLE NO: " + table;
 
-        function markDone(id) {
-            db.ref('orders/' + id).update({ status: 'completed' });
+        // FIXED FULL MENU DATA
+        const chaskaMenu = [
+            { name: "Veg Crispy Burger", price: 69, cat: "Burgers", img: "burger" },
+            { name: "Cheese Blast Burger", price: 89, cat: "Burgers", img: "cheese-burger" },
+            { name: "Paneer Grilled Burger", price: 119, cat: "Burgers", img: "paneer" },
+            { name: "Classic Cold Coffee", price: 50, cat: "Cold Coffee", img: "coffee" },
+            { name: "Chocolate Cold Coffee", price: 70, cat: "Cold Coffee", img: "chocolate-shake" },
+            { name: "Chaska Frappe", price: 90, cat: "Cold Coffee", img: "frappe" },
+            { name: "Margherita Pizza", price: 120, cat: "Pizza", img: "pizza" },
+            { name: "Double Cheese Pizza", price: 150, cat: "Pizza", img: "pizza-cheese" },
+            { name: "Veg Steam Momos", price: 60, cat: "Snacks", img: "dumplings" },
+            { name: "Peri Peri Fries", price: 70, cat: "Snacks", img: "fries" },
+            { name: "Oreo Shake", price: 80, cat: "Shakes", img: "oreo" },
+            { name: "Virgin Mojito", price: 60, cat: "Shakes", img: "mojito" }
+        ];
+
+        let cart = [];
+
+        function filterMenu(cat, btn) {
+            document.querySelectorAll('#cat-tabs button').forEach(b => b.classList.remove('active-cat'));
+            btn.classList.add('active-cat');
+            renderMenu(cat);
         }
+
+        function renderMenu(cat) {
+            const container = document.getElementById('menu-container');
+            container.innerHTML = '';
+            
+            chaskaMenu.forEach(item => {
+                if (cat !== 'All' && item.cat !== cat) return;
+
+                const photo = `https://loremflickr.com/300/300/${item.img || 'food'},cafe`;
+
+                container.innerHTML += `
+                <div class="item-card p-4 flex gap-5 items-center">
+                    <img src="${photo}" class="w-24 h-24 rounded-[2rem] object-cover bg-slate-50 shadow-sm">
+                    <div class="flex-1">
+                        <h4 class="font-extrabold text-slate-800 uppercase text-xs tracking-tight">${item.name}</h4>
+                        <p class="text-indigo-600 font-black text-xl mt-1">₹${item.price}</p>
+                    </div>
+                    <button onclick="addToCart('${item.name}', ${item.price})" class="bg-indigo-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all"><i class="fa-solid fa-plus"></i></button>
+                </div>`;
+            });
+        }
+
+        function addToCart(name, price) {
+            const exist = cart.find(i => i.name === name);
+            if(exist) exist.qty++; else cart.push({ name, price, qty: 1 });
+            updateCart();
+        }
+
+        function updateCart() {
+            const bar = document.getElementById('cart-bar');
+            const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+            const count = cart.reduce((s, i) => s + i.qty, 0);
+
+            if(count > 0) {
+                bar.classList.remove('hidden');
+                setTimeout(() => bar.classList.remove('translate-y-10', 'opacity-0'), 10);
+                document.getElementById('cart-count').innerText = count;
+                document.getElementById('cart-total').innerText = "₹" + total;
+            } else { bar.classList.add('hidden'); }
+        }
+
+        function openCart() {
+            document.getElementById('cart-modal').classList.remove('hidden');
+            const list = document.getElementById('cart-items');
+            list.innerHTML = '';
+            cart.forEach((item, i) => {
+                list.innerHTML += `
+                <div class="flex justify-between items-center bg-slate-50 p-5 rounded-[2rem]">
+                    <div>
+                        <p class="font-black text-xs uppercase text-slate-800">${item.name}</p>
+                        <p class="text-indigo-600 font-bold text-sm italic">₹${item.price * item.qty}</p>
+                    </div>
+                    <div class="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm">
+                        <button onclick="changeQty(${i}, -1)" class="w-8 h-8 font-black text-slate-400">-</button>
+                        <span class="font-black text-sm">${item.qty}</span>
+                        <button onclick="changeQty(${i}, 1)" class="w-8 h-8 font-black text-indigo-600">+</button>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('final-bill').innerText = "₹" + cart.reduce((s, i) => s + (i.price * i.qty), 0);
+        }
+
+        function changeQty(i, v) {
+            cart[i].qty += v;
+            if(cart[i].qty <= 0) cart.splice(i, 1);
+            if(cart.length === 0) closeCart(); else openCart();
+            updateCart();
+        }
+
+        function closeCart() { document.getElementById('cart-modal').classList.add('hidden'); }
+
+        function placeOrder() {
+            if(cart.length === 0) return;
+            const btn = document.getElementById('order-btn');
+            btn.innerText = "Processing..."; btn.disabled = true;
+
+            db.ref('orders').push({
+                table_no: table,
+                items: cart.map(i => `${i.name} x${i.qty}`).join(', '),
+                instruction: document.getElementById('order-note').value,
+                bill_amount: cart.reduce((s, i) => s + (i.price * i.qty), 0),
+                status: "pending",
+                timestamp: Date.now()
+            }).then(() => {
+                alert("Bhai, Order Chala Gaya! 🍔");
+                cart = []; updateCart(); closeCart();
+                btn.innerText = "Place Order 🚀"; btn.disabled = false;
+            });
+        }
+
+        renderMenu('All');
     </script>
 </body>
 </html>
