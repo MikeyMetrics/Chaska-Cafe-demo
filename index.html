@@ -3,62 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chaska Cafe | Order</title>
+    <title>Chaska | Digital Menu</title>
     <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-database-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; }
-        .card { background: white; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #F9FAFB; }
+        
+        .header-gradient { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); }
+        .category-pill { transition: 0.3s; white-space: nowrap; }
+        .category-pill.active { background: #4f46e5; color: white; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3); }
+        
+        .item-card { background: white; border-radius: 20px; transition: 0.2s; border: 1px solid #F1F5F9; }
+        .item-card:active { transform: scale(0.97); }
+        
+        .floating-cart { position: fixed; bottom: 20px; left: 20px; right: 20px; background: #4f46e5; border-radius: 16px; display: none; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(100px); } to { transform: translateY(0); } }
     </style>
 </head>
-<body class="pb-32">
+<body class="pb-24">
 
-    <header class="p-6 bg-white border-b sticky top-0 z-50 flex justify-between items-center">
-        <div>
-            <h1 class="text-2xl font-black italic text-indigo-600 uppercase">Chaska Cafe</h1>
-            <p id="table-no" class="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Table: Detecting...</p>
+    <header class="header-gradient pt-10 pb-20 px-6 rounded-b-[40px] shadow-xl">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-white text-2xl font-800 tracking-tighter">CHASKA <span class="text-indigo-400">CAFE</span></h1>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Table No: <span id="display-table">01</span></p>
+            </div>
+            <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white border border-white/20">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </div>
         </div>
+        <input type="text" placeholder="Search your favorite dish..." class="w-full p-4 bg-white/10 border border-white/20 rounded-2xl text-white placeholder-slate-400 outline-none backdrop-blur-md">
     </header>
 
-    <div id="menu" class="p-4 space-y-4">
-        <div class="card p-4 flex items-center gap-4">
-            <div class="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 text-xl font-black">B</div>
-            <div class="flex-1">
-                <h4 class="font-black text-xs uppercase">Veg Cheese Burger</h4>
-                <p class="text-indigo-600 font-black">₹89</p>
-            </div>
-            <button onclick="addToCart('Veg Cheese Burger', 89)" class="bg-indigo-600 text-white w-10 h-10 rounded-xl shadow-lg"><i class="fa-solid fa-plus"></i></button>
-        </div>
-
-        <div class="card p-4 flex items-center gap-4">
-            <div class="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 text-xl font-black">C</div>
-            <div class="flex-1">
-                <h4 class="font-black text-xs uppercase">Cold Coffee</h4>
-                <p class="text-indigo-600 font-black">₹60</p>
-            </div>
-            <button onclick="addToCart('Cold Coffee', 60)" class="bg-indigo-600 text-white w-10 h-10 rounded-xl shadow-lg"><i class="fa-solid fa-plus"></i></button>
-        </div>
+    <div class="px-6 -mt-8 overflow-x-auto no-scrollbar flex gap-3 pb-4">
+        <button class="category-pill active px-6 py-3 rounded-full bg-white text-slate-600 font-800 text-xs shadow-md border">🔥 Popular</button>
+        <button class="category-pill px-6 py-3 rounded-full bg-white text-slate-600 font-800 text-xs shadow-sm border">🍕 Pizza</button>
+        <button class="category-pill px-6 py-3 rounded-full bg-white text-slate-600 font-800 text-xs shadow-sm border">🥤 Drinks</button>
+        <button class="category-pill px-6 py-3 rounded-full bg-white text-slate-600 font-800 text-xs shadow-sm border">🍔 Burgers</button>
     </div>
 
-    <div id="cart-bar" class="fixed bottom-6 left-4 right-4 hidden z-50">
-        <button onclick="showForm()" class="w-full bg-slate-900 text-white p-5 rounded-[2rem] flex justify-between items-center shadow-2xl">
-            <span id="count" class="bg-indigo-500 w-8 h-8 rounded-full text-xs flex items-center justify-center font-black">0</span>
-            <span class="text-xs font-black uppercase">View Order</span>
-            <span id="total" class="font-black text-lg">₹0</span>
+    <main class="px-6 mt-6">
+        <h3 class="font-800 text-slate-900 text-lg mb-4">Recommended for You</h3>
+        <div id="menu-container" class="space-y-4">
+            </div>
+    </main>
+
+    <div id="cart-bar" class="floating-cart p-4 shadow-2xl flex justify-between items-center text-white z-50">
+        <div>
+            <p id="items-count" class="text-[10px] font-bold uppercase tracking-widest text-indigo-200">1 Item Added</p>
+            <p class="text-lg font-800">₹<span id="total-price">0</span></p>
+        </div>
+        <button onclick="sendOrder()" class="bg-white text-indigo-600 px-6 py-3 rounded-xl font-800 text-sm flex items-center gap-2">
+            Order Now <i class="fa-solid fa-arrow-right"></i>
         </button>
-    </div>
-
-    <div id="form-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-end">
-        <div class="bg-white w-full rounded-t-[3rem] p-8 space-y-4">
-            <h3 class="text-2xl font-black italic">Aapki Details</h3>
-            <input id="c-name" type="text" placeholder="Aapka Naam" class="w-full bg-slate-50 p-5 rounded-2xl font-bold outline-none border-none">
-            <input id="c-phone" type="number" placeholder="Mobile Number" class="w-full bg-slate-50 p-5 rounded-2xl font-bold outline-none border-none">
-            <button onclick="sendOrder()" id="send-btn" class="w-full bg-indigo-600 text-white py-6 rounded-[2rem] font-black uppercase shadow-xl">Place Order 🚀</button>
-            <button onclick="this.parentElement.parentElement.classList.add('hidden')" class="w-full text-slate-400 font-bold text-xs uppercase">Back</button>
-        </div>
     </div>
 
     <script>
@@ -73,39 +73,67 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
+        
         let cart = [];
-        const tableNum = new URLSearchParams(window.location.search).get('table') || "Table-1";
-        document.getElementById('table-no').innerText = "TABLE: " + tableNum;
 
-        function addToCart(n, p) {
-            cart.push({name: n, price: p});
-            document.getElementById('cart-bar').classList.remove('hidden');
-            document.getElementById('count').innerText = cart.length;
-            document.getElementById('total').innerText = "₹" + cart.reduce((s,i) => s+i.price, 0);
+        // LOAD MENU FROM DATABASE
+        db.ref('menu').on('value', snap => {
+            const container = document.getElementById('menu-container');
+            container.innerHTML = '';
+            snap.forEach(c => {
+                const i = c.val();
+                container.innerHTML += `
+                    <div class="item-card p-4 flex justify-between items-center">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-3 h-3 border border-green-500 flex items-center justify-center"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span></span>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Best Seller</span>
+                            </div>
+                            <h4 class="font-800 text-slate-800">${i.name}</h4>
+                            <p class="text-indigo-600 font-800 mt-1">₹${i.price}</p>
+                        </div>
+                        <button onclick="addToCart('${i.name}', ${i.price})" class="bg-indigo-50 text-indigo-600 px-5 py-2 rounded-xl font-800 text-sm border border-indigo-100 hover:bg-indigo-600 hover:text-white transition">
+                            ADD
+                        </button>
+                    </div>`;
+            });
+        });
+
+        function addToCart(name, price) {
+            cart.push({name, price});
+            updateCartUI();
         }
 
-        function showForm() { document.getElementById('form-modal').classList.remove('hidden'); }
+        function updateCartUI() {
+            const bar = document.getElementById('cart-bar');
+            const totalText = document.getElementById('total-price');
+            const countText = document.getElementById('items-count');
+            
+            if(cart.length > 0) {
+                bar.style.display = 'flex';
+                let total = cart.reduce((sum, item) => sum + item.price, 0);
+                totalText.innerText = total;
+                countText.innerText = `${cart.length} Item${cart.length > 1 ? 's' : ''} Added`;
+            }
+        }
 
         function sendOrder() {
-            const name = document.getElementById('c-name').value;
-            const phone = document.getElementById('c-phone').value;
-            if(!name || phone.length < 10) return alert("Pura Details Fill Karo!");
-
-            const oid = "ORD-" + Math.floor(1000 + Math.random() * 9000);
-            document.getElementById('send-btn').innerText = "Sending...";
-
-            db.ref('orders/' + oid).set({
-                customer_name: name,
-                customer_phone: phone,
-                items: cart.map(i => i.name).join(', '),
-                table_no: tableNum,
-                status: "Pending",
+            const table = new URLSearchParams(window.location.search).get('table') || "Table 1";
+            const items = cart.map(i => i.name).join(', ');
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            
+            db.ref('orders').push({
+                customer_name: "QR Customer",
+                table_no: table,
+                items: items,
+                bill_amount: total,
+                status: 'KOT',
                 timestamp: Date.now()
-            }).then(() => {
-                alert("Order Sent Successfully!");
-                location.reload();
-            }).catch(e => alert("Error: " + e.message));
+            });
+            
+            alert("Order Bhej Diya Hai! Tyari shuru...");
+            cart = [];
+            document.getElementById('cart-bar').style.display = 'none';
         }
     </script>
 </body>
